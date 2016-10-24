@@ -38,6 +38,8 @@ Customer Key will come after running the credential checker.
 haswitch ovh auth
 ```
 A validation URL will be given You will have to follow it in order to activate the application. Once you have done that you will have the customer key:
+
+```json
 ovh: {
   "me": "nsXXX.ovh.net",
   "endpoint": "ovh-eu",
