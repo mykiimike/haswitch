@@ -241,15 +241,9 @@ function network(cmd, resource, subcall) {
 	var iptablesPrefix = segment.toUpperCase();
 
 	if(cmd == 'init') {
-
 		exec('iptables -t nat -N PRE'+iptablesPrefix);
 		exec('iptables -t nat -N POST'+iptablesPrefix);
 
-		exec('iptables -t nat -F PRE'+iptablesPrefix);
-		exec('iptables -t nat -F POST'+iptablesPrefix);
-
-		exec('iptables -t nat -A POSTROUTING -o eth0 -j POST'+iptablesPrefix);
-		exec('iptables -t nat -A PREROUTING -i eth0 -j PRE'+iptablesPrefix);
 		if(subcall != true)
 			process.exit(0)
 		return;
@@ -258,8 +252,6 @@ function network(cmd, resource, subcall) {
 		exec('iptables -t nat -X PRE'+iptablesPrefix);
 		exec('iptables -t nat -X POST'+iptablesPrefix);
 
-		exec('iptables -t nat -D POSTROUTING -o eth0 -j POST'+iptablesPrefix);
-		exec('iptables -t nat -D PREROUTING -i eth0 -j PRE'+iptablesPrefix);
 		if(subcall != true)
 			process.exit(0)
 		return;
@@ -273,7 +265,7 @@ function network(cmd, resource, subcall) {
 program
 	.arguments('<resource>')
 	.option('-c, --config [file]', 'Configuration file', '/etc/haswitch.json')
-	.option('-e, --emulate [on/off]', 'Just print commands w/o execution', false)
+	.option('-e, --emulate', 'Just print commands w/o execution', false)
 	.option('-v, --verbose');
 
 program
@@ -306,6 +298,7 @@ program.on('--help', function(){
 	console.log('    $ haswitch network init     Initialize routing chains');
   console.log('');
 	console.log('  haswitch.js (c) 2016 - Michael Vergoz');
+	console.log('');
 });
 
 program.parse(process.argv);
