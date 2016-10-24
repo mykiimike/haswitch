@@ -16,7 +16,7 @@
   "dependencies": {
     "node-jen": "^1.0.4",
     "commander": "^2.9.0",
-    "prettyjson": "^1.1.3",
+    "prettyjson": "^1.1.3"
   },
   "bin": {
     "haswitch": "index.js"
