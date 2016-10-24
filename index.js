@@ -286,7 +286,8 @@ function prepare() {
 				var target = '/data/'+rname+'/'+machine.vm;
 				var link = '/var/lib/lxc/'+machine.vm;
 				try {
-					fs.stat(link);
+					if(!fs.stat(link))
+						exec('ln -s '+target+' '+link);
 				} catch(e) {
 					exec('ln -s '+target+' '+link);
 				}
