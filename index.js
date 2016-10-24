@@ -51,7 +51,7 @@ function exec(cmd) {
 		} catch(e) {}
 	}
 	else {
-		console.log('[EMULATED] '+cmd);
+		console.log(cmd);
 	}
 }
 
@@ -261,6 +261,40 @@ function network(cmd, resource, subcall) {
 	process.exit(-1)
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * Sync lxc symlinks
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+function prepare() {
+	var hs = new haswitch(program);
+
+	/* data dirs */
+	for(var rname in hs.config.resources) {
+		var r = hs.config.resources[rname];
+		for(var mp in r.machines) {
+				var machine = r.machines[mp];
+				var target = '/data/'+rname+'/'+machine.vm;
+				exec('mkdir -p '+target);
+		}
+	}
+
+	/* lxc symlinks */
+	for(var rname in hs.config.resources) {
+		var r = hs.config.resources[rname];
+		for(var mp in r.machines) {
+				var machine = r.machines[mp];
+				var target = '/data/'+rname+'/'+machine.vm;
+				var link = '/var/lib/lxc/'+machine.vm;
+				try {
+					fs.stat(link);
+				} catch(e) {
+					exec('ln -s '+target+' '+link);
+				}
+		}
+	}
+
+	process.exit(0);
+}
 
 program
 	.arguments('<resource>')
@@ -289,6 +323,11 @@ program
   .command('show')
 	.description('Show configuration file')
   .action(show);
+
+program
+  .command('prepare')
+	.description('Make data dirs and sync LXC /var/lib/lxc symlinks')
+  .action(prepare);
 
 program.on('--help', function(){
   console.log('  Examples:');
