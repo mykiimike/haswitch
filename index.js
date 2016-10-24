@@ -6,6 +6,35 @@ const program = require('commander');
 const execSuper = require('child_process').execSync;
 const prettyjson = require('prettyjson');
 
+
+/* read package */
+try {
+		var pack = JSON.parse(fs.readFileSync(__dirname+'/package.json'))
+} catch(e) {
+	console.log('Can not read package.json: '+e.message)
+	process.exit(-1);
+}
+
+program.version('haswitch v'+pack.version)
+/*
+
+
+return;
+*/
+
+/*
+var ovh = require('ovh')({
+  appKey: process.env.APP_KEY,
+  appSecret: process.env.APP_SECRET,
+  consumerKey: process.env.CONSUMER_KEY
+});
+
+ovh.request('GET', '/me', function (err, me) {
+  console.log(err || 'Welcome ' + me.firstname);
+});
+*/
+
+
 console.pretty = function(data) {
 	console.log(prettyjson.render(data));
 }
@@ -330,14 +359,212 @@ program
 	.description('Make data dirs and sync LXC /var/lib/lxc symlinks')
   .action(prepare);
 
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * OVH
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+function ovh(command, resource) {
+	var hs = new haswitch(program);
+
+	if(!hs.config.ovh || !hs.config.ovh.me) {
+		console.pretty({
+			error: 'NO_CONF',
+			message: 'Please configure ovh: {} in your '+program.config,
+			likeThis: {
+				ovh: {
+					me: "nsXXXX.ovh.net",
+					endpoint: "ovh-eu",
+					appKey: "APP_KEY",
+					appSecret: "APP_SECRET",
+					customerKey: "If you have not it then leave it blank"
+				}
+			}
+		});
+		process.exit(0);
+	}
+
+	var ovh = require('ovh')(hs.config.ovh);
+
+	/* credentials */
+	if(command == 'auth') {
+		if(!hs.config.ovh.consumerKey) {
+			ovh.request('POST', '/auth/credential', {
+			  'accessRules': [
+			    { 'method': 'GET', 'path': '/*'},
+			    { 'method': 'POST', 'path': '/*'},
+			    { 'method': 'PUT', 'path': '/*'},
+			    { 'method': 'DELETE', 'path': '/*'}
+			  ]
+			}, function (error, credential) {
+				if(error) {
+					console.pretty(error)
+					return;
+				}
+				console.pretty(credential);
+			});
+		}
+		else {
+			ovh.request('GET', '/me', function (err, me) {
+				if(err) {
+					console.pretty({
+						error: err,
+						message: me
+					});
+					process.exit(0);
+				}
+
+				console.pretty(me);
+			});
+		}
+		return(false);
+	}
+
+	/* show ip */
+	if(command == 'check') {
+		var tocheck = [];
+
+		for(var rname in hs.config.resources) {
+			var rsc = hs.config.resources[rname]
+			for(var a in rsc.machines) {
+				var machine = rsc.machines[a];
+				if(machine.ovh == true && machine.public && machine.public.external && machine.vm) {
+					tocheck.push({
+						machine: machine.vm,
+						ipAddress: machine.public.external
+					});
+				}
+			}
+		}
+
+		var render = [];
+		function popCheck() {
+			var el = tocheck.pop();
+			if(!el) {
+				console.pretty(render);
+				process.exit(0);
+			}
+
+			ovh.request('GET', '/ip/'+el.ipAddress, function (err, data) {
+				if(err) {
+					console.pretty({
+						error: err,
+						message: data
+					});
+
+					process.exit(0);
+				}
+
+				el.ipAddress = data.ip;
+				el.type = data.type;
+				el.country = data.country;
+				el.routedTo = data.routedTo.serviceName;
+
+				if(el.routedTo == hs.config.ovh.me)
+					el.routedTo += ' (Me)'
+
+				render.push(el);
+
+				setTimeout(popCheck, 100);
+			});
+		}
+
+		popCheck();
+	}
+
+	/* failover */
+	if(command == 'failover') {
+		var tocheck = [];
+
+		for(var rname in hs.config.resources) {
+			var rsc = hs.config.resources[rname]
+			if(resource && resource != rname)
+				continue;
+
+			for(var a in rsc.machines) {
+				var machine = rsc.machines[a];
+				if(machine.ovh == true && machine.public && machine.public.external) {
+					tocheck.push({
+						machine: machine.vm,
+						ipAddress: machine.public.external
+					});
+				}
+			}
+		}
+
+		var render = [];
+		function popFo() {
+			var el = tocheck.pop();
+			if(!el) {
+				console.pretty(render);
+				process.exit(0);
+			}
+
+			function processFoEl(el) {
+				var opts = {
+					to: hs.config.ovh.me
+				}
+
+				ovh.request('POST', '/ip/'+el.ipAddress+'/move', opts, function (err, data) {
+					if(err) {
+						var rerr = [{
+							element: el,
+							migrateTo: hs.config.ovh.me,
+							error: err,
+							message: data
+						}];
+
+						if(err == 409) {
+							rerr[0].information = "Retrying in 5 seconds"
+							console.pretty(rerr);
+							setTimeout(processFoEl, 5000, el)
+							return;
+						}
+
+						console.pretty(rerr);
+						setTimeout(popFo, 100);
+						return;
+					}
+
+					el.data = data;
+					render.push(el)
+					setTimeout(popFo, 100);
+				});
+			}
+
+			processFoEl(el)
+		}
+
+		popFo();
+	}
+
+	return(false);
+}
+
+program
+  .command('ovh <command> [resource]')
+	.description('OVH Failover Options')
+	.on('--help', function(){
+	  console.log('  Examples:');
+	  console.log('');
+	  console.log('    $ haswitch ovh auth                  OVH\'s Authentification process');
+		console.log('    $ haswitch ovh check                 Check ip Failover status and routing');
+		console.log('    $ haswitch ovh failover <resource>   Point one or all resources on Me');
+	  console.log('');
+		console.log('  haswitch.js v'+pack.version+' (c) 2016 - Michael Vergoz');
+		console.log('');
+	})
+  .action(ovh);
+
 program.on('--help', function(){
   console.log('  Examples:');
   console.log('');
   console.log('    $ haswitch start ha0        Start all machines from ha0');
 	console.log('    $ haswitch start ha0 vm1ha0 Start machines vm1ha0 from ha0');
 	console.log('    $ haswitch network init     Initialize routing chains');
+	console.log('    $ haswitch ovh --help       Get helps with OVH API');
   console.log('');
-	console.log('  haswitch.js (c) 2016 - Michael Vergoz');
+	console.log('  haswitch.js v'+pack.version+' (c) 2016 - Michael Vergoz');
 	console.log('');
 });
 

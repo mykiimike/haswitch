@@ -33,6 +33,7 @@ ovh: {
   "appSecret": "APP_SECRET",
 }
 ```
+
 Customer Key will come after running the credential checker.
 ```bash
 haswitch ovh auth
