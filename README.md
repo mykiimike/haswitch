@@ -10,27 +10,27 @@ sudo npm install -g haswitch
 
 # Operations
 
-## Show configuration
+Show configuration
 ```bash
 haswitch show
 ```
 
-## Start all resources
+Start all resources
 ```bash
 haswitch start
 ```
 
-## Stop ha0 resource
+Stop ha0 resource
 ```bash
 haswitch start ha0
 ```
 
-## Start VM vm1ha0 on ha0 resource
+Start VM vm1ha0 on ha0 resource
 ```bash
 haswitch start ha0 vm1ha0
 ```
 
-## Stop VM vm1ha0 on ha0 without execution
+Stop VM vm1ha0 on ha0 without execution
 ```bash
 haswitch -e stop ha0 vm1ha0
 ```

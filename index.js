@@ -317,9 +317,7 @@ function prepare() {
 				try {
 					if(!fs.stat(link))
 						exec('ln -s '+target+' '+link);
-				} catch(e) {
-					exec('ln -s '+target+' '+link);
-				}
+				} catch(e) {}
 		}
 	}
 
