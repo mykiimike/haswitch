@@ -364,7 +364,7 @@ program
  *
  * OVH
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-function ovh(command, resource) {
+function ovh(command, resource, node) {
 	var hs = new haswitch(program);
 
 	if(!hs.config.ovh || !hs.config.ovh.me) {
@@ -431,21 +431,19 @@ function ovh(command, resource) {
 				if(machine.ovh == true && machine.public && machine.public.external && machine.vm) {
 					tocheck.push({
 						machine: machine.vm,
-						ipAddress: machine.public.external
+						ipLocal: machine.public.internal,
+						ipRemote: machine.public.external
 					});
 				}
 			}
 		}
 
-		var render = [];
 		function popCheck() {
 			var el = tocheck.pop();
-			if(!el) {
-				console.pretty(render);
+			if(!el)
 				process.exit(0);
-			}
 
-			ovh.request('GET', '/ip/'+el.ipAddress, function (err, data) {
+			ovh.request('GET', '/ip/'+el.ipRemote, function (err, data) {
 				if(err) {
 					console.pretty({
 						error: err,
@@ -455,7 +453,7 @@ function ovh(command, resource) {
 					process.exit(0);
 				}
 
-				el.ipAddress = data.ip;
+				el.ipRemote = data.ip;
 				el.type = data.type;
 				el.country = data.country;
 				el.routedTo = data.routedTo.serviceName;
@@ -463,7 +461,7 @@ function ovh(command, resource) {
 				if(el.routedTo == hs.config.ovh.me)
 					el.routedTo += ' (Me)'
 
-				render.push(el);
+				console.pretty([el]);
 
 				setTimeout(popCheck, 100);
 			});
@@ -483,29 +481,29 @@ function ovh(command, resource) {
 
 			for(var a in rsc.machines) {
 				var machine = rsc.machines[a];
+				if(node && machine.vm != node)
+					continue;
+
 				if(machine.ovh == true && machine.public && machine.public.external) {
 					tocheck.push({
 						machine: machine.vm,
-						ipAddress: machine.public.external
+						ipRemote: machine.public.external
 					});
 				}
 			}
 		}
 
-		var render = [];
 		function popFo() {
 			var el = tocheck.pop();
-			if(!el) {
-				console.pretty(render);
+			if(!el)
 				process.exit(0);
-			}
 
 			function processFoEl(el) {
 				var opts = {
 					to: hs.config.ovh.me
 				}
 
-				ovh.request('POST', '/ip/'+el.ipAddress+'/move', opts, function (err, data) {
+				ovh.request('POST', '/ip/'+el.ipRemote+'/move', opts, function (err, data) {
 					if(err) {
 						var rerr = [{
 							element: el,
@@ -516,18 +514,16 @@ function ovh(command, resource) {
 
 						if(err == 409) {
 							rerr[0].information = "Retrying in 5 seconds"
-							console.pretty(rerr);
+							console.pretty([rerr]);
 							setTimeout(processFoEl, 5000, el)
 							return;
 						}
 
-						console.pretty(rerr);
 						setTimeout(popFo, 100);
 						return;
 					}
 
-					el.data = data;
-					render.push(el)
+					console.pretty([el])
 					setTimeout(popFo, 100);
 				});
 			}
@@ -542,14 +538,14 @@ function ovh(command, resource) {
 }
 
 program
-  .command('ovh <command> [resource]')
+  .command('ovh <command> [resource] [machine]')
 	.description('OVH Failover Options')
 	.on('--help', function(){
 	  console.log('  Examples:');
 	  console.log('');
-	  console.log('    $ haswitch ovh auth                  OVH\'s Authentification process');
-		console.log('    $ haswitch ovh check                 Check ip Failover status and routing');
-		console.log('    $ haswitch ovh failover <resource>   Point one or all resources on Me');
+	  console.log('    $ haswitch ovh auth                           OVH\'s Authentification process');
+		console.log('    $ haswitch ovh check                          Check ip Failover status and routing');
+		console.log('    $ haswitch ovh failover <resource> <machine>  Point one or all resources on Me');
 	  console.log('');
 		console.log('  haswitch.js v'+pack.version+' (c) 2016 - Michael Vergoz');
 		console.log('');
