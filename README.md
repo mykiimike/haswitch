@@ -37,7 +37,9 @@ haswitch -e stop ha0 vm1ha0
 
 # LXC
 ## Install LXC
+```bash
 sudo apt-get install lxc lxc-templates wget bridge-utils
+```
 
 ## Prepare LXC
 Disable the default bridge “lxcbr0“,  got created as part of LXC installation.
@@ -51,6 +53,11 @@ Set “USE_LXC_BRIDGE” to “false“.
 ```bash
 USE_LXC_BRIDGE="false"
 ```
+# DRBD
+I suggest you to follow the guide from Zarafa:
+* https://doc.zarafa.com/trunk/Zarafa_HA_Manual/en-US/html/_drbd_device_initialization.html
+
+The DRBD resource name must have the same name as a haswitch resource.
 
 # ISP Integration
 
@@ -88,7 +95,9 @@ Now you have to activate OVH failover on the LXC container
   "vm": "vm1ha0",
   "public": {
     "internal": "192.168.0.6",
-    "external": "1.2.3.2"
+    "external": "1.2.3.2",
+    "internal6": "fd67:d076:089a:8da3::",
+    "external6": "2003:dead:beef:f80c::",
   }
 }
 ```

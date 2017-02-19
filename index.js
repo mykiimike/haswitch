@@ -110,6 +110,11 @@ function start(resource, specific) {
 		exec('iptables -t nat -F POST'+iptablesPrefix);
 		exec('iptables -t nat -N PRE'+iptablesPrefix);
 		exec('iptables -t nat -N POST'+iptablesPrefix);
+
+		exec('ip6tables -t nat -F PRE'+iptablesPrefix);
+		exec('ip6tables -t nat -F POST'+iptablesPrefix);
+		exec('ip6tables -t nat -N PRE'+iptablesPrefix);
+		exec('ip6tables -t nat -N POST'+iptablesPrefix);
 	}
 
 	/* Add iptable forwarding */
@@ -121,9 +126,16 @@ function start(resource, specific) {
 		if(machine.public) {
 			var i = machine.public.internal;
 			var e = machine.public.external;
+			var i6 = machine.public.internal6;
+			var e6 = machine.public.external6;
 
 			exec('iptables -t nat -A POST'+iptablesPrefix+' -s '+i+' -j SNAT --to-source '+e);
 			exec('iptables -t nat -A PRE'+iptablesPrefix+' -d '+e+' -j DNAT --to-destination '+i);
+
+			if(i6 && e6) {
+				exec('ip6tables -t nat -A POST'+iptablesPrefix+' -s '+i6+' -j SNAT --to-source '+e6);
+				exec('ip6tables -t nat -A PRE'+iptablesPrefix+' -d '+e6+' -j DNAT --to-destination '+i6);
+			}
 		}
 	}
 
@@ -218,14 +230,26 @@ function stop(resource, specific) {
 			var i = machine.public.internal;
 			var e = machine.public.external;
 
+			var i6 = machine.public.internal6;
+			var e6 = machine.public.external6;
+
 			exec('iptables -t nat -D POST'+iptablesPrefix+' -s '+i+' -j SNAT --to-source '+e);
 			exec('iptables -t nat -D PRE'+iptablesPrefix+' -d '+e+' -j DNAT --to-destination '+i);
+
+			if(i6 && e6) {
+				exec('ip6tables -t nat -D POST'+iptablesPrefix+' -s '+i6+' -j SNAT --to-source '+e6);
+				exec('ip6tables -t nat -D PRE'+iptablesPrefix+' -d '+e6+' -j DNAT --to-destination '+i6);
+			}
 		}
 	}
 
 	if(!specific) {
 		exec('iptables -t nat -F PRE'+iptablesPrefix);
 		exec('iptables -t nat -F POST'+iptablesPrefix);
+
+		exec('ip6tables -t nat -F PRE'+iptablesPrefix);
+		exec('ip6tables -t nat -F POST'+iptablesPrefix);
+
 		exec('ifdown '+interface);
 	}
 
@@ -273,6 +297,9 @@ function network(cmd, resource, subcall) {
 		exec('iptables -t nat -N PRE'+iptablesPrefix);
 		exec('iptables -t nat -N POST'+iptablesPrefix);
 
+		exec('ip6tables -t nat -N PRE'+iptablesPrefix);
+		exec('ip6tables -t nat -N POST'+iptablesPrefix);
+
 		if(subcall != true)
 			process.exit(0)
 		return;
@@ -280,6 +307,9 @@ function network(cmd, resource, subcall) {
 	else if(cmd == 'fini') {
 		exec('iptables -t nat -X PRE'+iptablesPrefix);
 		exec('iptables -t nat -X POST'+iptablesPrefix);
+
+		exec('ip6tables -t nat -X PRE'+iptablesPrefix);
+		exec('ip6tables -t nat -X POST'+iptablesPrefix);
 
 		if(subcall != true)
 			process.exit(0)
