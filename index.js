@@ -101,20 +101,23 @@ function start(resource, specific) {
 	var data = hs.current;
 	var segment = hs.current.segment;
 	var interface = hs.current.interface;
-	var iptablesPrefix = segment.toUpperCase();
+	var iptablesPrefix = interface ? interface.toUpperCase() : null;
 
 	/* change network state */
 	if(!specific) {
-		exec('ifup '+interface);
-		exec('iptables -t nat -F PRE'+iptablesPrefix);
-		exec('iptables -t nat -F POST'+iptablesPrefix);
-		exec('iptables -t nat -N PRE'+iptablesPrefix);
-		exec('iptables -t nat -N POST'+iptablesPrefix);
+		if(interface)
+			exec('ifup '+interface);
+		if(iptablesPrefix) {
+			exec('iptables -t nat -F PRE'+iptablesPrefix);
+			exec('iptables -t nat -F POST'+iptablesPrefix);
+			exec('iptables -t nat -N PRE'+iptablesPrefix);
+			exec('iptables -t nat -N POST'+iptablesPrefix);
 
-		exec('ip6tables -t nat -F PRE'+iptablesPrefix);
-		exec('ip6tables -t nat -F POST'+iptablesPrefix);
-		exec('ip6tables -t nat -N PRE'+iptablesPrefix);
-		exec('ip6tables -t nat -N POST'+iptablesPrefix);
+			exec('ip6tables -t nat -F PRE'+iptablesPrefix);
+			exec('ip6tables -t nat -F POST'+iptablesPrefix);
+			exec('ip6tables -t nat -N PRE'+iptablesPrefix);
+			exec('ip6tables -t nat -N POST'+iptablesPrefix);
+		}
 	}
 
 	/* Add iptable forwarding */
@@ -128,13 +131,14 @@ function start(resource, specific) {
 			var e = machine.public.external;
 			var i6 = machine.public.internal6;
 			var e6 = machine.public.external6;
+			if(iptablesPrefix) {
+				exec('iptables -t nat -A POST'+iptablesPrefix+' -s '+i+' -j SNAT --to-source '+e);
+				exec('iptables -t nat -A PRE'+iptablesPrefix+' -d '+e+' -j DNAT --to-destination '+i);
 
-			exec('iptables -t nat -A POST'+iptablesPrefix+' -s '+i+' -j SNAT --to-source '+e);
-			exec('iptables -t nat -A PRE'+iptablesPrefix+' -d '+e+' -j DNAT --to-destination '+i);
-
-			if(i6 && e6) {
-				exec('ip6tables -t nat -A POST'+iptablesPrefix+' -s '+i6+' -j SNAT --to-source '+e6);
-				exec('ip6tables -t nat -A PRE'+iptablesPrefix+' -d '+e6+' -j DNAT --to-destination '+i6);
+				if(i6 && e6) {
+					exec('ip6tables -t nat -A POST'+iptablesPrefix+' -s '+i6+' -j SNAT --to-source '+e6);
+					exec('ip6tables -t nat -A PRE'+iptablesPrefix+' -d '+e6+' -j DNAT --to-destination '+i6);
+				}
 			}
 		}
 	}
@@ -188,7 +192,7 @@ function stop(resource, specific) {
 	var data = hs.current;
 	var segment = hs.current.segment;
 	var interface = hs.current.interface;
-	var iptablesPrefix = segment.toUpperCase();
+	var iptablesPrefix = interface ? interface.toUpperCase() : null;
 
 	/* stop all VM */
 	for(var a in data.machines) {
@@ -233,24 +237,28 @@ function stop(resource, specific) {
 			var i6 = machine.public.internal6;
 			var e6 = machine.public.external6;
 
-			exec('iptables -t nat -D POST'+iptablesPrefix+' -s '+i+' -j SNAT --to-source '+e);
-			exec('iptables -t nat -D PRE'+iptablesPrefix+' -d '+e+' -j DNAT --to-destination '+i);
+			if(iptablesPrefix) {
+				exec('iptables -t nat -D POST'+iptablesPrefix+' -s '+i+' -j SNAT --to-source '+e);
+				exec('iptables -t nat -D PRE'+iptablesPrefix+' -d '+e+' -j DNAT --to-destination '+i);
 
-			if(i6 && e6) {
-				exec('ip6tables -t nat -D POST'+iptablesPrefix+' -s '+i6+' -j SNAT --to-source '+e6);
-				exec('ip6tables -t nat -D PRE'+iptablesPrefix+' -d '+e6+' -j DNAT --to-destination '+i6);
+				if(i6 && e6) {
+					exec('ip6tables -t nat -D POST'+iptablesPrefix+' -s '+i6+' -j SNAT --to-source '+e6);
+					exec('ip6tables -t nat -D PRE'+iptablesPrefix+' -d '+e6+' -j DNAT --to-destination '+i6);
+				}
 			}
 		}
 	}
 
 	if(!specific) {
-		exec('iptables -t nat -F PRE'+iptablesPrefix);
-		exec('iptables -t nat -F POST'+iptablesPrefix);
+		if(iptablesPrefix) {
+			exec('iptables -t nat -F PRE'+iptablesPrefix);
+			exec('iptables -t nat -F POST'+iptablesPrefix);
 
-		exec('ip6tables -t nat -F PRE'+iptablesPrefix);
-		exec('ip6tables -t nat -F POST'+iptablesPrefix);
-
-		exec('ifdown '+interface);
+			exec('ip6tables -t nat -F PRE'+iptablesPrefix);
+			exec('ip6tables -t nat -F POST'+iptablesPrefix);
+		}
+		if(interface)
+			exec('ifdown '+interface);
 	}
 
 }
@@ -291,26 +299,28 @@ function network(cmd, resource, subcall) {
 	var data = hs.current;
 	var segment = hs.current.segment;
 	var interface = hs.current.interface;
-	var iptablesPrefix = segment.toUpperCase();
+	var iptablesPrefix = interface ? interface.toUpperCase() : null;
 
 	if(cmd == 'init') {
-		exec('iptables -t nat -N PRE'+iptablesPrefix);
-		exec('iptables -t nat -N POST'+iptablesPrefix);
+		if(iptablesPrefix) {
+			exec('iptables -t nat -N PRE'+iptablesPrefix);
+			exec('iptables -t nat -N POST'+iptablesPrefix);
 
-		exec('ip6tables -t nat -N PRE'+iptablesPrefix);
-		exec('ip6tables -t nat -N POST'+iptablesPrefix);
-
+			exec('ip6tables -t nat -N PRE'+iptablesPrefix);
+			exec('ip6tables -t nat -N POST'+iptablesPrefix);
+		}
 		if(subcall != true)
 			process.exit(0)
 		return;
 	}
 	else if(cmd == 'fini') {
-		exec('iptables -t nat -X PRE'+iptablesPrefix);
-		exec('iptables -t nat -X POST'+iptablesPrefix);
+		if(iptablesPrefix) {
+			exec('iptables -t nat -X PRE'+iptablesPrefix);
+			exec('iptables -t nat -X POST'+iptablesPrefix);
 
-		exec('ip6tables -t nat -X PRE'+iptablesPrefix);
-		exec('ip6tables -t nat -X POST'+iptablesPrefix);
-
+			exec('ip6tables -t nat -X PRE'+iptablesPrefix);
+			exec('ip6tables -t nat -X POST'+iptablesPrefix);
+		}
 		if(subcall != true)
 			process.exit(0)
 		return;
@@ -332,7 +342,7 @@ function prepare() {
 		var r = hs.config.resources[rname];
 		for(var mp in r.machines) {
 				var machine = r.machines[mp];
-				var target = '/data/'+rname+'/'+machine.vm;
+				var target = '/data/'+r.segment+'/'+machine.vm;
 				exec('mkdir -p '+target);
 		}
 	}
@@ -342,7 +352,7 @@ function prepare() {
 		var r = hs.config.resources[rname];
 		for(var mp in r.machines) {
 				var machine = r.machines[mp];
-				var target = '/data/'+rname+'/'+machine.vm;
+				var target = '/data/'+r.segment+'/'+machine.vm;
 				var link = '/var/lib/lxc/'+machine.vm;
 				try {
 					if(!fs.stat(link))
