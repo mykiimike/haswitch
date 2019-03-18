@@ -355,9 +355,11 @@ function prepare() {
 				var target = '/data/'+r.segment+'/'+machine.vm;
 				var link = '/var/lib/lxc/'+machine.vm;
 				try {
-					if(!fs.stat(link))
-						exec('ln -s '+target+' '+link);
-				} catch(e) {}
+					fs.statSync(link)
+				} catch(e) {
+					//console.log(e);
+					exec('ln -s '+target+' '+link);
+				}
 		}
 	}
 
